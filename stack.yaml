@@ -2,7 +2,8 @@ resolver: lts-8.14
 
 packages:
 - '.'
-extra-deps: []
+extra-deps: 
+- sdl2-ttf-1.0.0
 flags: {}
 extra-package-dbs: []
 
