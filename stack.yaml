@@ -1,9 +1,14 @@
 resolver: lts-8.14
 
 packages:
-- '.'
-extra-deps: 
-- sdl2-ttf-1.0.0
+  - '.'
+  - location:
+      git: https://github.com/rongcuid/sdl2-ttf.git
+      commit: f7345a0ff803d3e0c284c1a05e034a5fce4f3da3
+    extra-dep: true
+
+extra-deps: []
+
 flags: {}
 extra-package-dbs: []
 
