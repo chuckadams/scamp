@@ -5,10 +5,22 @@ import qualified SDL.TTF as TTF
 import qualified SDL as SDL
 import SDL.Raw (Color(..))
 
-import Control.Monad.Reader
+import Control.Monad.RWS.Strict
 
 import Linear.V2
 import Linear.Affine (Point(..))
+
+data SDLEnvironment = SDLEnv {
+  envWindow   :: SDL.Window,
+  envRenderer :: SDL.Renderer,
+  envTexture  :: SDL.Texture
+}
+
+data GameState = GameState {
+  pos :: (Int, Int)
+}
+
+type ScampState = RWST SDLEnvironment () GameState IO ()
 
 arial :: String
 arial = "src/arial.ttf"
@@ -33,35 +45,29 @@ main = do
             envTexture = textTexture
       } 
 
-      runReaderT loop env
+      let state = GameState { pos = (50,50) }
+
+      execRWST loop env state 
 
       TTF.closeFont font
       SDL.destroyRenderer renderer
       SDL.destroyWindow window
       SDL.quit
 
-data SDLEnvironment = SDLEnv {
-  envWindow   :: SDL.Window,
-  envRenderer :: SDL.Renderer,
-  envTexture  :: SDL.Texture
-}
 
-data GameState = GameState {
-  pos :: (Int, Int)
-}
-
-loop :: ReaderT SDLEnvironment IO ()
+loop :: ScampState
 loop = do
-    let loc = SDL.Rectangle (P $ V2 320 240) (V2 50 50)
     env <- ask
+    let loc = SDL.Rectangle (P $ V2 320 240) (V2 50 50)
     let renderer = envRenderer env
     let tex = envTexture env
-    liftIO $ SDL.clear renderer
-    liftIO $ SDL.copy renderer tex Nothing (Just loc)
-    liftIO $  SDL.present renderer
+    liftIO $ do
+      SDL.clear renderer
+      SDL.copy renderer tex Nothing (Just loc)
+      SDL.present renderer
     handleEvents 
 
-handleEvents :: ReaderT SDLEnvironment IO ()
+handleEvents :: ScampState
 handleEvents = do
   mbEvent <- SDL.pollEvent
   case mbEvent of
