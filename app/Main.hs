@@ -7,6 +7,8 @@ import SDL.Raw (Color(..))
 
 import Control.Monad.RWS.Strict
 
+import Foreign.C.Types (CInt)
+
 import Linear.V2
 import Linear.Affine (Point(..))
 
@@ -17,7 +19,7 @@ data SDLEnvironment = SDLEnv {
 }
 
 data GameState = GameState {
-  pos :: (Int, Int)
+  pos :: (CInt, CInt)
 }
 
 type ScampState = RWST SDLEnvironment () GameState IO ()
@@ -45,7 +47,7 @@ main = do
             envTexture = textTexture
       } 
 
-      let state = GameState { pos = (50,50) }
+      let state = GameState { pos = (100,100) }
 
       execRWST loop env state 
 
@@ -58,7 +60,8 @@ main = do
 loop :: ScampState
 loop = do
     env <- ask
-    let loc = SDL.Rectangle (P $ V2 320 240) (V2 50 50)
+    (GameState (x,y)) <- get
+    let loc = SDL.Rectangle (P $ V2 x y) (V2 50 50)
     let renderer = envRenderer env
     let tex = envTexture env
     liftIO $ do
@@ -72,4 +75,20 @@ handleEvents = do
   mbEvent <- SDL.pollEvent
   case mbEvent of
     Just (SDL.Event _ SDL.QuitEvent) -> return ()
+    Just (SDL.Event _ (SDL.KeyboardEvent dat)) -> handleKeyEvent dat
     _ -> loop
+
+handleKeyEvent :: SDL.KeyboardEventData -> ScampState
+handleKeyEvent ev =
+  do
+    let sym = SDL.keyboardEventKeysym ev
+        code = SDL.keysymKeycode sym
+    state@(GameState (x,y)) <- get
+    case code of
+      SDL.KeycodeUp -> put (GameState (x, y - 10))
+      SDL.KeycodeDown -> put (GameState (x, y + 10))
+      SDL.KeycodeLeft -> put (GameState (x - 10, y))
+      SDL.KeycodeRight -> put (GameState (x + 10, y))
+      _ -> return ()
+    loop
+
