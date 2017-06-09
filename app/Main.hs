@@ -5,6 +5,8 @@ import qualified SDL.TTF as TTF
 import qualified SDL as SDL
 import SDL.Raw (Color(..))
 
+import Control.Monad.Reader
+
 import Linear.V2
 import Linear.Affine (Point(..))
 
@@ -24,24 +26,44 @@ main = do
       textSurface <- TTF.renderUTF8Solid font "@" (Color 255 255 255 0)
       textTexture <- SDL.createTextureFromSurface renderer textSurface
       SDL.freeSurface textSurface
-      loop window renderer textTexture
+
+      let env = SDLEnv {
+            envWindow = window,
+            envRenderer = renderer,
+            envTexture = textTexture
+      } 
+
+      runReaderT loop env
 
       TTF.closeFont font
       SDL.destroyRenderer renderer
       SDL.destroyWindow window
       SDL.quit
 
-loop :: t -> SDL.Renderer -> SDL.Texture -> IO ()
-loop window renderer textTexture = do
-    let loc = SDL.Rectangle (P $ V2 320 240) (V2 50 50)
-    SDL.clear renderer
-    SDL.copy renderer textTexture Nothing (Just loc)
-    SDL.present renderer
-    handleEvents window renderer textTexture
+data SDLEnvironment = SDLEnv {
+  envWindow   :: SDL.Window,
+  envRenderer :: SDL.Renderer,
+  envTexture  :: SDL.Texture
+}
 
-handleEvents :: t -> SDL.Renderer -> SDL.Texture -> IO ()
-handleEvents window renderer textTexture = do
+data GameState = GameState {
+  pos :: (Int, Int)
+}
+
+loop :: ReaderT SDLEnvironment IO ()
+loop = do
+    let loc = SDL.Rectangle (P $ V2 320 240) (V2 50 50)
+    env <- ask
+    let renderer = envRenderer env
+    let tex = envTexture env
+    liftIO $ SDL.clear renderer
+    liftIO $ SDL.copy renderer tex Nothing (Just loc)
+    liftIO $  SDL.present renderer
+    handleEvents 
+
+handleEvents :: ReaderT SDLEnvironment IO ()
+handleEvents = do
   mbEvent <- SDL.pollEvent
   case mbEvent of
     Just (SDL.Event _ SDL.QuitEvent) -> return ()
-    _ -> loop window renderer textTexture
+    _ -> loop
